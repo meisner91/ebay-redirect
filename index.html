@@ -46,13 +46,30 @@
   const button = document.getElementById('return');
   const reference = document.getElementById('reference');
   // Never display, store or log codes, state values or provider error text.
-  try { window.history.replaceState(null, '', window.location.pathname); } catch (_) {}
+  // Retain only a boolean in this history entry so a reload cannot look like
+  // an initially empty callback after its sensitive query has been removed.
+  const priorAttempt = !query && !fragment && window.history.state?.ebayForwardAttempted === true;
+  try { window.history.replaceState(priorAttempt ? {ebayForwardAttempted: true} : null, '', window.location.pathname); } catch (_) {}
   const hasResponse = code.length || error.length || state.length;
+  if (priorAttempt) {
+    heading.textContent = 'Rückleitung bereits gestartet';
+    message.textContent = 'Diese Seite wurde nach der Verarbeitung einer eBay-Antwort erneut geöffnet.';
+    detail.textContent = 'Ob die Verbindung erfolgreich ist, zeigt dir Sellostark. Falls dort noch kein Konto verbunden ist, starte die Anmeldung erneut in der App.';
+    reference.textContent = 'EBAY_CALLBACK_RELOADED';
+    return;
+  }
+  if (fragment) {
+    heading.textContent = 'Anmeldung nicht bestätigt';
+    message.textContent = 'Die eBay-Rückleitung hat ein unerwartetes Format. Es wurde keine Verbindung hergestellt.';
+    detail.textContent = 'Bitte starte eine neue Anmeldung in Sellostark.';
+    reference.textContent = 'EBAY_CALLBACK_INVALID';
+    return;
+  }
   if (!hasResponse) {
     reference.textContent = 'EBAY_CALLBACK_EMPTY';
     return;
   }
-  if (state.length > 1 || code.length > 1 || error.length > 1 || (code.length && error.length) || query.length > 15000 || fragment) {
+  if (state.length > 1 || code.length > 1 || error.length > 1 || (code.length && error.length) || query.length > 15000) {
     heading.textContent = 'Anmeldung nicht bestätigt';
     message.textContent = 'Die eBay-Rückleitung ist nicht eindeutig. Es wurde keine Verbindung hergestellt.';
     detail.textContent = 'Bitte starte eine neue Anmeldung in Sellostark.';
@@ -79,6 +96,7 @@
   detail.textContent = 'Falls die App nicht automatisch erscheint, tippe auf „Sellostark öffnen“. Ob die Verbindung erfolgreich ist, zeigt dir die App.';
   button.href = callback;
   reference.textContent = '';
+  try { window.history.replaceState({ebayForwardAttempted: true}, '', window.location.pathname); } catch (_) {}
   window.location.replace(callback);
 })();
 </script>
