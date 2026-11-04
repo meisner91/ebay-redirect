@@ -1,11 +1,86 @@
-<!DOCTYPE html>                                          
-  <html>
-  <head><title>Redirecting...</title></head>               
-  <body>          
-  <script>
-    window.location.replace('sellostark://oauth' +
-  window.location.search);                                 
-  </script>
-  <p>Redirecting back to app...</p>                        
-  </body>         
-  </html>     
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Zurück zu Sellostark</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #25243c; background: #f6f5fb; }
+    body { margin: 0; min-height: 100svh; display: grid; place-items: center; }
+    main { box-sizing: border-box; width: min(100% - 2rem, 34rem); margin: 2rem 0; padding: clamp(1.5rem, 6vw, 3rem); border: 1px solid #e3dff2; border-radius: 1.5rem; background: white; }
+    .brand { color: #6652d7; font-size: 1.1rem; font-weight: 750; }
+    h1 { font-size: clamp(1.5rem, 6vw, 2rem); line-height: 1.2; }
+    p { line-height: 1.65; }
+    .button { display: inline-block; margin: .5rem 0; padding: .9rem 1.2rem; border-radius: .8rem; color: white; background: #6652d7; text-decoration: none; font-weight: 650; }
+    a:focus-visible { outline: 3px solid #21715c; outline-offset: 4px; }
+    footer { margin-top: 1.5rem; font-size: .9rem; }
+    footer a { color: #6652d7; }
+    small { color: #6e6b80; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">Sellostark</div>
+  <h1 id="heading">Zurück zur App</h1>
+  <p id="message" role="status">Hier ist keine zusätzliche Anmeldung erforderlich. Die Verbindung mit eBay startest du in Sellostark.</p>
+  <a id="return" class="button" href="sellostark://open">Sellostark öffnen</a>
+  <p id="detail">Falls du gerade von eBay zurückkommst, wurde keine vollständige Anmeldebestätigung übergeben. Dein Konto ist dadurch noch nicht verbunden.</p>
+  <small id="reference"></small>
+  <noscript><p>Für die automatische Rückkehr nach der eBay-Anmeldung muss JavaScript im Browser aktiviert sein.</p></noscript>
+  <footer><a href="privacy.html">Datenschutz</a></footer>
+</main>
+<script>
+(() => {
+  const query = window.location.search;
+  const fragment = window.location.hash;
+  const params = new URLSearchParams(query);
+  const state = params.getAll('state');
+  const code = params.getAll('code');
+  const error = params.getAll('error');
+  const heading = document.getElementById('heading');
+  const message = document.getElementById('message');
+  const detail = document.getElementById('detail');
+  const button = document.getElementById('return');
+  const reference = document.getElementById('reference');
+  // Never display, store or log codes, state values or provider error text.
+  try { window.history.replaceState(null, '', window.location.pathname); } catch (_) {}
+  const hasResponse = code.length || error.length || state.length;
+  if (!hasResponse) {
+    reference.textContent = 'EBAY_CALLBACK_EMPTY';
+    return;
+  }
+  if (state.length > 1 || code.length > 1 || error.length > 1 || (code.length && error.length) || query.length > 15000 || fragment) {
+    heading.textContent = 'Anmeldung nicht bestätigt';
+    message.textContent = 'Die eBay-Rückleitung ist nicht eindeutig. Es wurde keine Verbindung hergestellt.';
+    detail.textContent = 'Bitte starte eine neue Anmeldung in Sellostark.';
+    reference.textContent = 'EBAY_CALLBACK_INVALID';
+    return;
+  }
+  if (state.length !== 1 || !state[0].trim() || state[0] === 'null' || state[0] === 'undefined') {
+    heading.textContent = 'Anmeldung nicht bestätigt';
+    message.textContent = 'In der eBay-Rückleitung fehlt die Zuordnung zu deiner Anmeldung. Es wurde keine Verbindung hergestellt.';
+    detail.textContent = 'Bitte starte die Anmeldung erneut in Sellostark. Bleibt dieser Fehler bestehen, müssen die eBay-Rückleitungseinstellungen geprüft werden.';
+    reference.textContent = 'EBAY_STATE_MISSING';
+    return;
+  }
+  if (!(code.length === 1 && code[0].trim()) && !(error.length === 1 && error[0].trim())) {
+    heading.textContent = 'Anmeldung nicht bestätigt';
+    message.textContent = 'eBay hat keine vollständige Anmeldebestätigung übergeben.';
+    detail.textContent = 'Bitte starte die Anmeldung erneut in Sellostark und bestätige bei eBay den Zugriff.';
+    reference.textContent = 'EBAY_RESPONSE_MISSING';
+    return;
+  }
+  const callback = 'sellostark://oauth' + query;
+  heading.textContent = error.length ? 'Zurück zu Sellostark' : 'Anmeldung wird geprüft';
+  message.textContent = 'Die Antwort von eBay wird an Sellostark übergeben. Die App prüft dort deine Verbindung.';
+  detail.textContent = 'Falls die App nicht automatisch erscheint, tippe auf „Sellostark öffnen“. Ob die Verbindung erfolgreich ist, zeigt dir die App.';
+  button.href = callback;
+  reference.textContent = '';
+  window.location.replace(callback);
+})();
+</script>
+</body>
+</html>
